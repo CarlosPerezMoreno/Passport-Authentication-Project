@@ -1,31 +1,31 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
 
-//Login page
+//User model
+const User = require("../models/User");
+
+// Login Page
 router.get("/login", (req, res) => res.render("login"));
 
-//Register page
+// Register Page
 router.get("/register", (req, res) => res.render("register"));
 
-//Register Handle
+// Register
 router.post("/register", (req, res) => {
-  const { name, email, password, passwordTwo } = req.body;
-
+  const { name, email, password, password2 } = req.body;
   let errors = [];
 
-  //Check required fields
-  if (!name || !email || !password || !passwordTwo) {
-    errors.push({ msg: "Make sure to fill all fields" });
+  if (!name || !email || !password || !password2) {
+    errors.push({ msg: "Please enter all fields" });
   }
 
-  //Passwords match?
-  if (password != passwordTwo) {
-    errors.push({ msg: "Both passwords are not matching" });
+  if (password != password2) {
+    errors.push({ msg: "Passwords do not match" });
   }
 
-  //Check the pass length
   if (password.length < 6) {
-    errors.push({ msg: "Your password must have at least 6 characters" });
+    errors.push({ msg: "Password must be at least 6 characters" });
   }
 
   if (errors.length > 0) {
@@ -34,10 +34,47 @@ router.post("/register", (req, res) => {
       name,
       email,
       password,
-      passwordTwo,
+      password2,
     });
   } else {
-    res.send("pass");
+    // Validation successful
+    User.findOne({ email: email }).then((user) => {
+      if (user) {
+        //User exists
+        errors.push({ msg: "This email is already taken" });
+        res.render("register", {
+          errors,
+          name,
+          email,
+          password,
+          password2,
+        });
+      } else {
+        const newUser = new User({
+          name,
+          email,
+          password,
+        });
+
+        //Hashing pass
+        bcrypt.genSalt(10, (err, salt) =>
+          bcrypt.hash(newUser.password, salt, (err, hash) => {
+            if (err) throw err;
+
+            // Password -> Hash
+            newUser.password = hash;
+
+            // Saving user
+            newUser
+              .save()
+              .then((user) => {
+                res.redirect("/login");
+              })
+              .catch((err) => console.log(err));
+          })
+        );
+      }
+    });
   }
 });
 
