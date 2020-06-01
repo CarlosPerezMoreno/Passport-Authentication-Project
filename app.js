@@ -31,6 +31,10 @@ app.use(
   })
 );
 
+// Passports middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
 //Flash
 app.use(flash());
 
